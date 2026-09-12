@@ -1,0 +1,12 @@
+{
+  "SYN.CBP.VS.001": {"name": "Essential Hypertension", "codes": {"ICD-10-CM": ["I10"]}},
+  "SYN.CBP.VS.004": {"name": "ESRD Diagnosis", "codes": {"ICD-10-CM": ["N18.6", "Z99.2"]}},
+  "SYN.CBP.VS.005": {"name": "ESRD Procedures", "codes": {"CPT": ["90935", "90937"], "HCPCS": ["G0257"]}},
+  "SYN.CBP.VS.006": {"name": "Pregnancy", "codes": {"ICD-10-CM": ["Z33.1", "O80"]}},
+  "SYN.CBP.VS.007": {"name": "Hospice", "codes": {"HCPCS": ["Q5001", "Q5002"], "POS": ["34"]}},
+  "SYN.CBP.VS.008": {"name": "Frailty", "codes": {"ICD-10-CM": ["R54"]}},
+  "SYN.CBP.VS.009": {"name": "Advanced Illness", "codes": {"ICD-10-CM": ["C79.9"]}},
+  "SYN.CBP.VS.013": {"name": "CPT II Exception Modifiers", "codes": {"MODIFIER": ["1P", "2P", "8P"]}},
+  "SYN.CBP.VS.014": {"name": "Non-acute Inpatient", "codes": {"POS": ["31", "32", "54", "56"]}},
+  "SYN.CBP.VS.015": {"name": "Acute Inpatient and ED", "codes": {"POS": ["21", "23"]}}
+}

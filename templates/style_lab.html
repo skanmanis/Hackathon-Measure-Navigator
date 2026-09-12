@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Style prototypes · Measure Navigator</title>
+  <link rel="stylesheet" href="{{ url_for('static',filename='prototypes.css',v='2') }}">
+  <link rel="stylesheet" href="{{ url_for('static',filename='prototype-themes-extra.css',v='1') }}">
+</head>
+<body class="lab">
+  <header class="lab-head">
+    <a href="/">← Measure Navigator</a>
+    <div><span>Design review</span><h1>Choose a visual direction</h1><p>Each option uses the same type scale and layout so you can compare color direction without other variables.</p></div>
+  </header>
+  <main class="lab-grid">
+    {% set choices = [
+      ('clinical','Option A','Clinical clarity','Familiar healthcare blue with restrained sage guidance.'),
+      ('enterprise','Option B','Enterprise evidence','Compact blue and sage for evidence-heavy analyst workflows.'),
+      ('calm','Option C','Calm navigator','Spacious blue and visible sage for guided conversations.'),
+      ('coastal','Option D','Coastal teal','Deep navy, clear teal, and pale aqua. Crisp without feeling clinical.'),
+      ('indigo','Option E','Indigo cloud','Indigo and lavender gray. Modern, polished, and green-free.'),
+      ('sand','Option F','Warm neutral','Ink blue, warm sand, and muted terracotta. Editorial and approachable.'),
+      ('slate','Option G','Slate and cyan','Charcoal slate and cyan. Technical, crisp, and high contrast.'),
+      ('navy','Option H','Navy and mint','Deep navy and fresh mint. Formal, calm, and presentation-ready.')
+    ] %}
+    {% for theme, option, name, description in choices %}
+    <a class="choice {{ theme }}" href="/prototype/{{ theme }}">
+      <span>{{ option }}</span><h2>{{ name }}</h2><p>{{ description }}</p>
+      <div class="swatches"><i></i><i></i><i></i></div><b>Open prototype</b>
+    </a>
+    {% endfor %}
+  </main>
+</body>
+</html>

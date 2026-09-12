@@ -1,0 +1,10 @@
+.coastal{--primary:#123b5d;--sage:#178a8a;--pale:#def3f1;--canvas:#f3f8f8;--radius:8px}
+.indigo{--primary:#4c55a5;--sage:#747b9f;--pale:#ececf7;--canvas:#f7f7fb;--radius:10px}
+.sand{--primary:#29465b;--sage:#b46650;--pale:#f3eadc;--canvas:#faf7f1;--radius:8px}
+.slate{--primary:#263947;--sage:#168da3;--pale:#e3f2f5;--canvas:#f3f6f7;--radius:4px}
+.navy{--primary:#172f52;--sage:#2f927d;--pale:#dff3ec;--canvas:#f3f7f8;--radius:10px}
+.choice.coastal .swatches i:nth-child(1){background:#123b5d}.choice.coastal .swatches i:nth-child(2){background:#178a8a}.choice.coastal .swatches i:nth-child(3){background:#def3f1}
+.choice.indigo .swatches i:nth-child(1){background:#4c55a5}.choice.indigo .swatches i:nth-child(2){background:#747b9f}.choice.indigo .swatches i:nth-child(3){background:#ececf7}
+.choice.sand .swatches i:nth-child(1){background:#29465b}.choice.sand .swatches i:nth-child(2){background:#b46650}.choice.sand .swatches i:nth-child(3){background:#f3eadc}
+.choice.slate .swatches i:nth-child(1){background:#263947}.choice.slate .swatches i:nth-child(2){background:#168da3}.choice.slate .swatches i:nth-child(3){background:#e3f2f5}
+.choice.navy .swatches i:nth-child(1){background:#172f52}.choice.navy .swatches i:nth-child(2){background:#2f927d}.choice.navy .swatches i:nth-child(3){background:#dff3ec}

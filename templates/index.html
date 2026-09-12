@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Measure Navigator</title>
+  <link rel="stylesheet" href="{{ url_for('static',filename='styles.css',v='3') }}">
+  <link rel="stylesheet" href="{{ url_for('static',filename='enhancements.css',v='1') }}">
+  <link rel="stylesheet" href="{{ url_for('static',filename='theme-v2.css',v='4') }}">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <a class="brand" href="/"><span>MN</span><div>Measure Navigator<small>HEDIS clarification assistant</small></div></a>
+      <nav aria-label="Primary navigation"><a class="active" href="/">Navigator</a><a href="/faqs">FAQ library</a><a href="/style-lab">Style prototypes</a></nav>
+      <div class="scope"><b>SYN-CBP</b><span>MY2026 prototype</span></div>
+    </header>
+    <div class="caution" role="note"><strong>Please do not enter PHI.</strong> Use only the minimum facts needed. If identifiers are detected, Measure Navigator masks them, cautions you, and continues with the clarification.</div>
+    <section class="intro">
+      <div><p class="kicker">MEASURE KNOWLEDGE · DETERMINISTIC CHECKS · TRACEABLE ANSWERS</p><h1>Measure clarification with visible evidence</h1></div>
+      <div class="selectors"><label>Measure<select id="measure-select"></select></label><label>Measurement year<select id="year-select"></select></label><span id="package-status" class="status-chip">Loading packages</span></div>
+    </section>
+    <main class="product-grid">
+      <section class="workspace" aria-label="Measure clarification workspace">
+        <div class="path"><div class="active"><b>1</b><span>Ask</span></div><i></i><div><b>2</b><span>FAQ</span></div><i></i><div><b>3</b><span>Rules</span></div><i></i><div><b>4</b><span>Evidence</span></div><button id="trace-button" class="trace-button" type="button" title="View the FAQ match, routing decision, checks, open conditions, citations, and source authority" disabled>View audit trace</button></div>
+        <div class="quick" aria-label="Example questions"><button data-prompt="Does an inpatient blood pressure reading count for CBP?">Inpatient BP reading</button><button data-prompt="Why might a member be excluded from CBP?">CBP exclusions</button><button data-prompt="What happens if a required fact is unknown?">Unknown fact</button></div>
+        <div id="messages" class="messages" aria-live="polite"><article class="message assistant"><span class="avatar">MN</span><div><small>Navigator</small><p>Welcome. What would you like to clarify? I’ll check approved FAQs first, then use deterministic rule checks when needed.</p></div></article></div>
+        <div id="fact-panel" class="fact-panel" hidden><h2 id="fact-question"></h2><p>Provide only these facts. Choose “I don’t know” when a fact is unavailable.</p><form id="fact-form"></form></div>
+        <form id="ask-form" class="composer"><label for="question">Ask a HEDIS question</label><div><textarea id="question" rows="2" maxlength="2000" placeholder="Example: Does a BP reading from an inpatient claim count for CBP?" required></textarea><button type="submit">Ask</button></div><small>Do not enter names, member IDs, MRNs, dates of birth, addresses, or contact details.</small></form>
+      </section>
+      <div class="side-rail" id="side-rail" hidden><aside class="faq-panel" aria-labelledby="faq-panel-title">
+        <div class="panel-head"><div><span class="eyebrow">QUICK REFERENCE</span><h2 id="faq-panel-title">Relevant FAQs</h2></div><span id="faq-count" class="count">0</span></div>
+        <p id="faq-context" class="panel-copy">Approved FAQs appear here before deeper rule evaluation.</p>
+        <div id="faq-list" class="faq-list" aria-live="polite"><div class="faq-empty">Loading approved guidance…</div></div>
+        <div class="panel-actions"><a class="secondary" href="/faqs">Open FAQ library</a><a class="primary-link" href="/api/faqs/download?format=csv">Download CSV</a></div>
+      </aside></div>
+    </main>
+    <dialog id="trace-dialog" class="trace-dialog" aria-labelledby="trace-title"><div class="dialog-head"><div><span class="eyebrow">AUDITABLE RESULT</span><h2 id="trace-title">Answer trace</h2></div><button id="trace-close" type="button" aria-label="Close audit trace">×</button></div><p class="panel-copy">FAQ match, routing confidence, checks, open conditions, citations, and source authority.</p><div id="trace-content" class="trace-content"></div><div class="dialog-foot"><a href="/api/escalations">View escalation queue</a><button id="trace-done" type="button">Done</button></div></dialog>
+    <footer><span>Deterministic checks first</span><span>Model explanation only</span><span>Synthetic CBP knowledge</span></footer>
+  </div>
+  <script src="{{ url_for('static',filename='app.js',v='5') }}" defer></script>
+</body>
+</html>

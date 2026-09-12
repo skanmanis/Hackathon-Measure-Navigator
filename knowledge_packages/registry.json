@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "packages": [
+    {"measure_id": "SYN-CBP", "display_name": "Controlling High Blood Pressure", "measurement_year": 2026, "path": "SYN-CBP/MY2026", "status": "ready"},
+    {"measure_id": "SYN-CBP", "display_name": "Controlling High Blood Pressure", "measurement_year": 2027, "path": "SYN-CBP/MY2027", "status": "awaiting_artifacts"},
+    {"measure_id": "SYN-CDC", "display_name": "Comprehensive Diabetes Care", "measurement_year": 2026, "path": "SYN-CDC/MY2026", "status": "awaiting_artifacts"},
+    {"measure_id": "SYN-COL", "display_name": "Colorectal Cancer Screening", "measurement_year": 2026, "path": "SYN-COL/MY2026", "status": "awaiting_artifacts"},
+    {"measure_id": "SYN-EED", "display_name": "Eye Exam for Patients With Diabetes", "measurement_year": 2026, "path": "SYN-EED/MY2026", "status": "awaiting_artifacts"},
+    {"measure_id": "SYN-KED", "display_name": "Kidney Health Evaluation", "measurement_year": 2026, "path": "SYN-KED/MY2026", "status": "awaiting_artifacts"},
+    {"measure_id": "SYN-SPC", "display_name": "Statin Therapy for Cardiovascular Disease", "measurement_year": 2026, "path": "SYN-SPC/MY2026", "status": "awaiting_artifacts"}
+  ]
+}

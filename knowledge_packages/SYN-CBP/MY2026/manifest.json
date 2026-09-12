@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "measure_id": "SYN-CBP",
+  "measurement_year": 2026,
+  "display_name": "Controlling High Blood Pressure",
+  "package_status": "DEMO_VALIDATED",
+  "source_precedence": ["SPECIFICATION", "MLD", "VSD", "SQL", "DECISION_TREE", "FAQ"],
+  "required_artifacts": ["specification.synthetic.json", "decision_tree.yaml", "decision_tree.generated.json", "check_catalog.json", "value_sets.synthetic.json", "evaluate_check.sql"],
+  "optional_artifacts": ["specification.pdf", "mld.json", "vsd.xlsx", "stored_procedures"],
+  "effective_date": "2026-01-01",
+  "approver": "HACKATHON_DEMO",
+  "notes": "Replace synthetic assets with licensed and governed sources on the office laptop."
+}

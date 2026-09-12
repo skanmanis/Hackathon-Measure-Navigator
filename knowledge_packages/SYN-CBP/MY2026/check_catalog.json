@@ -1,0 +1,278 @@
+{
+  "pattern": "guided-rule-interview",
+  "description": "Atomic checks the app can ask about, one at a time, without ever needing a full member record. Each check needs only the specific facts listed. If the user can't supply a needed fact, the correct app behavior is to say so explicitly, not guess.",
+  "measure_id": "SYN-CBP",
+  "checks": [
+    {
+      "check_id": "CHK-HTN-DX-VALID",
+      "supports_rule": "HTN-DX-1 / HTN-DX-2",
+      "question": "Is this diagnosis code a qualifying hypertension diagnosis?",
+      "required_facts": [
+        {
+          "name": "diagnosis_code",
+          "type": "CODE",
+          "prompt": "What is the diagnosis code?"
+        },
+        {
+          "name": "code_system",
+          "type": "STRING",
+          "prompt": "What code system? (e.g., ICD-10-CM)"
+        }
+      ],
+      "value_set_oid": "SYN.CBP.VS.001",
+      "logic": "diagnosis_code is a member of value_set_oid",
+      "if_unknown": "If the code system or exact code is unknown, this event cannot confirm denominator entry \u2014 but do not conclude the member is NOT in the denominator either. Flag as open; look for a second qualifying diagnosis elsewhere before ruling anything out."
+    },
+    {
+      "check_id": "CHK-DATE-BY-JUN30",
+      "supports_rule": "HTN-DX-1",
+      "question": "Is this service date on or before June 30 of the measurement year?",
+      "required_facts": [
+        {
+          "name": "service_date",
+          "type": "DATE",
+          "prompt": "What is the service date?"
+        },
+        {
+          "name": "measurement_year",
+          "type": "NUMBER",
+          "prompt": "What measurement year?"
+        }
+      ],
+      "logic": "service_date <= June 30 of measurement_year",
+      "if_unknown": "If the exact service date is unknown, note that this diagnosis cannot yet confirm the first-half-of-year requirement. Continue checking the second diagnosis date and other facts; revisit once the date is available."
+    },
+    {
+      "check_id": "CHK-DATE-BY-YEAREND",
+      "supports_rule": "HTN-DX-2 / all exclusions / numerator",
+      "question": "Is this date on or before December 31 of the measurement year?",
+      "required_facts": [
+        {
+          "name": "the_date",
+          "type": "DATE",
+          "prompt": "What is the date in question?"
+        },
+        {
+          "name": "measurement_year",
+          "type": "NUMBER",
+          "prompt": "What measurement year?"
+        }
+      ],
+      "logic": "the_date <= December 31 of measurement_year",
+      "if_unknown": "If the date is unknown, the timing of this event stays unresolved. State both possibilities: if on/before 12/31 it counts, if after it does not."
+    },
+    {
+      "check_id": "CHK-ESRD-DX",
+      "supports_rule": "EXCL-ESRD-DX",
+      "question": "Is this diagnosis code an ESRD diagnosis?",
+      "required_facts": [
+        {
+          "name": "diagnosis_code",
+          "type": "CODE",
+          "prompt": "What is the diagnosis code?"
+        },
+        {
+          "name": "code_system",
+          "type": "STRING",
+          "prompt": "What code system?"
+        }
+      ],
+      "value_set_oid": "SYN.CBP.VS.004",
+      "logic": "diagnosis_code is a member of value_set_oid",
+      "if_unknown": "If the diagnosis code is unknown, ESRD exclusion status stays open. State: \"if this code is in the ESRD value set, the member is excluded; otherwise this exclusion does not apply.\" Continue evaluating other exclusions and the numerator regardless."
+    },
+    {
+      "check_id": "CHK-ESRD-PX",
+      "supports_rule": "EXCL-ESRD-PX",
+      "question": "Is this procedure code a dialysis, transplant, or nephrectomy procedure?",
+      "required_facts": [
+        {
+          "name": "procedure_code",
+          "type": "CODE",
+          "prompt": "What is the procedure code?"
+        },
+        {
+          "name": "code_system",
+          "type": "STRING",
+          "prompt": "What code system? (e.g., CPT)"
+        }
+      ],
+      "value_set_oid": "SYN.CBP.VS.005",
+      "logic": "procedure_code is a member of value_set_oid",
+      "if_unknown": "If the procedure code is unknown, note that ESRD-via-procedure exclusion is unresolved, and present both branches. Do not block other checks on this."
+    },
+    {
+      "check_id": "CHK-PREGNANCY-DX",
+      "supports_rule": "EXCL-PREGNANCY",
+      "question": "Is this diagnosis a pregnancy diagnosis?",
+      "required_facts": [
+        {
+          "name": "diagnosis_code",
+          "type": "CODE",
+          "prompt": "What is the diagnosis code?"
+        },
+        {
+          "name": "code_system",
+          "type": "STRING",
+          "prompt": "What code system?"
+        }
+      ],
+      "value_set_oid": "SYN.CBP.VS.006",
+      "logic": "diagnosis_code is a member of value_set_oid",
+      "if_unknown": "If the diagnosis code is unknown, present both outcomes (excluded vs. not) and continue with remaining checks."
+    },
+    {
+      "check_id": "CHK-HOSPICE",
+      "supports_rule": "EXCL-HOSPICE",
+      "question": "Does this claim line indicate hospice care (HCPCS code or place of service)?",
+      "required_facts": [
+        {
+          "name": "procedure_or_pos_code",
+          "type": "CODE",
+          "prompt": "What is the HCPCS code or place-of-service code?"
+        },
+        {
+          "name": "code_system",
+          "type": "STRING",
+          "prompt": "What code system? (HCPCS or POS)"
+        }
+      ],
+      "value_set_oid": "SYN.CBP.VS.007",
+      "logic": "procedure_or_pos_code is a member of value_set_oid",
+      "if_unknown": "If unknown, state both outcomes conditionally and proceed with the rest of the evaluation \u2014 hospice status alone should never halt the investigation."
+    },
+    {
+      "check_id": "CHK-NONACUTE-POS",
+      "supports_rule": "EXCL-NONACUTE-INPT",
+      "question": "Is this a non-acute inpatient place of service (SNF, nursing facility, ICF)?",
+      "required_facts": [
+        {
+          "name": "pos_code",
+          "type": "CODE",
+          "prompt": "What is the place-of-service code?"
+        }
+      ],
+      "value_set_oid": "SYN.CBP.VS.014",
+      "logic": "pos_code is a member of value_set_oid",
+      "if_unknown": "If the place of service is unknown, flag as an open condition with both outcomes stated, and continue evaluating other exclusions/numerator facts."
+    },
+    {
+      "check_id": "CHK-AGE-66-PLUS",
+      "supports_rule": "EXCL-FRAILTY-ADVANCED-ILLNESS",
+      "question": "Is the member age 66 or older as of the measure's required measurement-year date?",
+      "required_facts": [
+        {
+          "name": "age",
+          "type": "NUMBER",
+          "prompt": "What is the member's age as of the measure's required measurement-year date?"
+        }
+      ],
+      "logic": "age >= 66",
+      "if_unknown": "If age is unknown, the age-gated frailty plus advanced illness exclusion stays open. Continue checking both clinical indicators and report the age requirement as unresolved."
+    },
+    {
+      "check_id": "CHK-FRAILTY-DX",
+      "supports_rule": "EXCL-FRAILTY-ADVANCED-ILLNESS",
+      "question": "Is this diagnosis a frailty indicator?",
+      "required_facts": [
+        {
+          "name": "diagnosis_code",
+          "type": "CODE",
+          "prompt": "What is the diagnosis code?"
+        }
+      ],
+      "value_set_oid": "SYN.CBP.VS.008",
+      "logic": "diagnosis_code is a member of value_set_oid",
+      "if_unknown": "If unknown, note this exclusion requires BOTH frailty and advanced illness \u2014 an unknown here means the combined exclusion cannot be confirmed OR ruled out. State that plainly and move on."
+    },
+    {
+      "check_id": "CHK-ADVANCED-ILLNESS-DX",
+      "supports_rule": "EXCL-FRAILTY-ADVANCED-ILLNESS",
+      "question": "Is this diagnosis an advanced illness indicator?",
+      "required_facts": [
+        {
+          "name": "diagnosis_code",
+          "type": "CODE",
+          "prompt": "What is the diagnosis code?"
+        }
+      ],
+      "value_set_oid": "SYN.CBP.VS.009",
+      "logic": "diagnosis_code is a member of value_set_oid",
+      "if_unknown": "Same as CHK-FRAILTY-DX: an unknown here leaves the combined 66+ exclusion open, not failed. Say so and continue."
+    },
+    {
+      "check_id": "CHK-READING-DATE-VALID",
+      "supports_rule": "numerator selection_rule",
+      "question": "Was this BP reading taken on or after the second qualifying hypertension diagnosis?",
+      "required_facts": [
+        {
+          "name": "reading_date",
+          "type": "DATE",
+          "prompt": "What is the BP reading date?"
+        },
+        {
+          "name": "second_dx_date",
+          "type": "DATE",
+          "prompt": "What is the date of the second qualifying hypertension diagnosis?"
+        }
+      ],
+      "logic": "reading_date >= second_dx_date",
+      "if_unknown": "If either date is unknown, the reading cannot yet be confirmed as usable \u2014 but don't discard it. Note it as pending and continue checking setting/modifier/threshold with the reading provisionally."
+    },
+    {
+      "check_id": "CHK-READING-SETTING",
+      "supports_rule": "numerator excluded_sources",
+      "question": "Was this reading taken during an acute inpatient stay or ED visit?",
+      "required_facts": [
+        {
+          "name": "pos_code",
+          "type": "CODE",
+          "prompt": "What is the place-of-service code for the reading?"
+        }
+      ],
+      "value_set_oid": "SYN.CBP.VS.015",
+      "logic": "pos_code is a member of value_set_oid -> if TRUE, reading is EXCLUDED from numerator",
+      "if_unknown": "This is the exact scenario worth calling out: if the place of service for the reading is unknown, do NOT refuse to proceed. State clearly: \"If this reading was taken during an inpatient stay or ED visit, it would be excluded from the numerator; otherwise it counts.\" Then continue evaluating the modifier and BP threshold checks with the reading provisionally included, and surface the open condition in the final answer."
+    },
+    {
+      "check_id": "CHK-READING-MODIFIER",
+      "supports_rule": "numerator excluded_sources",
+      "question": "Does this CPT Category II code carry an exception modifier (1P/2P/8P)?",
+      "required_facts": [
+        {
+          "name": "cpt_ii_modifier",
+          "type": "CODE",
+          "prompt": "What modifier, if any, is on the CPT Category II code?"
+        }
+      ],
+      "value_set_oid": "SYN.CBP.VS.013",
+      "logic": "cpt_ii_modifier is a member of value_set_oid -> if TRUE, reading is EXCLUDED from numerator",
+      "if_unknown": "If the modifier is unknown, state both outcomes and continue \u2014 do not block the final answer on this alone."
+    },
+    {
+      "check_id": "CHK-BP-CONTROLLED",
+      "supports_rule": "numerator rate_definition",
+      "question": "Is this reading's systolic < 140 AND diastolic < 90?",
+      "required_facts": [
+        {
+          "name": "systolic",
+          "type": "NUMBER",
+          "prompt": "What is the systolic value?"
+        },
+        {
+          "name": "diastolic",
+          "type": "NUMBER",
+          "prompt": "What is the diastolic value?"
+        }
+      ],
+      "logic": "systolic < 140 AND diastolic < 90",
+      "if_unknown": "If either value is missing, this is the one check where the app should be direct that a numeric answer isn't possible without both numbers \u2014 but it should still report everything else it was able to determine (exclusions, reading eligibility) rather than stopping the whole response."
+    }
+  ],
+  "notes": [
+    "This catalog is the 'what to ask' layer: the app determines which checks are relevant to a question, asks only for the facts those checks need, and never requires (or stores) a full member record.",
+    "If a required fact can't be supplied, the correct response is 'I need <fact> to determine this' -- never a guess and never silently skipping the check.",
+    "Each check's logic is intentionally atomic and maps 1:1 or few:1 to conditions already defined in measure_logic_document.json -- this file doesn't replace the MLD, it adds the interview layer on top of it.",
+    "Every check's if_unknown field defines the never-a-dead-end behavior: an explicit \"unknown\" answer is captured as an open condition with both outcomes stated, not treated as a blocker. See evaluate_check.sql's OPEN_CONDITION status for the corresponding deterministic-layer behavior."
+  ]
+}

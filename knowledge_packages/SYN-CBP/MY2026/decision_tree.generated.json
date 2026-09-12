@@ -1,0 +1,357 @@
+{
+  "_meta": {
+    "generated_from": "decision_tree.yaml",
+    "generated_at_utc": "2026-09-12T00:10:53.187733+00:00",
+    "warning": "GENERATED FILE - do not hand-edit. Edit the source YAML and run yaml_to_json.py."
+  },
+  "tree_id": "SYN-CBP-DECISION-TREE",
+  "measure_id": "SYN-CBP",
+  "description": "Guided decision logic for CBP. No member, claim, or enrollment data is read anywhere in this tree -- every node consumes only the facts a user supplies for the specific scenario being discussed.\n",
+  "start": "route_by_question_type",
+  "nodes": {
+    "route_by_question_type": {
+      "type": "router",
+      "description": "Route to the relevant sub-tree based on the user's question.",
+      "options": [
+        {
+          "label": "Is this member in the denominator? (entry / event criteria)",
+          "goto": "check_htn_dx_1"
+        },
+        {
+          "label": "Does something exclude this member from the denominator?",
+          "goto": "route_exclusions"
+        },
+        {
+          "label": "Is this BP reading numerator-compliant?",
+          "goto": "check_reading_date_valid"
+        }
+      ]
+    },
+    "check_htn_dx_1": {
+      "type": "check",
+      "check_id": "CHK-HTN-DX-VALID",
+      "context": "Checking the FIRST qualifying hypertension diagnosis",
+      "on": {
+        "MET": "check_htn_dx_1_date",
+        "NOT_MET": "conclude_dx_not_qualifying",
+        "OPEN_CONDITION": "conclude_open_entry_criteria"
+      }
+    },
+    "check_htn_dx_1_date": {
+      "type": "check",
+      "check_id": "CHK-DATE-BY-JUN30",
+      "context": "Confirming the first diagnosis falls on/before June 30",
+      "on": {
+        "MET": "check_htn_dx_2",
+        "NOT_MET": "conclude_first_dx_too_late",
+        "OPEN_CONDITION": "conclude_open_entry_criteria"
+      }
+    },
+    "check_htn_dx_2": {
+      "type": "check",
+      "check_id": "CHK-HTN-DX-VALID",
+      "context": "Checking the SECOND qualifying hypertension diagnosis (a distinct date from the first)",
+      "on": {
+        "MET": "check_htn_dx_2_date",
+        "NOT_MET": "conclude_only_one_qualifying_dx",
+        "OPEN_CONDITION": "conclude_open_entry_criteria"
+      }
+    },
+    "check_htn_dx_2_date": {
+      "type": "check",
+      "check_id": "CHK-DATE-BY-YEAREND",
+      "context": "Confirming the second diagnosis falls on/before December 31",
+      "on": {
+        "MET": "conclude_in_denominator",
+        "NOT_MET": "conclude_second_dx_too_late",
+        "OPEN_CONDITION": "conclude_open_entry_criteria"
+      }
+    },
+    "route_exclusions": {
+      "type": "router",
+      "options": [
+        {
+          "label": "ESRD diagnosis?",
+          "goto": "check_esrd_dx"
+        },
+        {
+          "label": "ESRD procedure (dialysis / transplant / nephrectomy)?",
+          "goto": "check_esrd_px"
+        },
+        {
+          "label": "Pregnancy?",
+          "goto": "check_pregnancy"
+        },
+        {
+          "label": "Hospice?",
+          "goto": "check_hospice"
+        },
+        {
+          "label": "Non-acute inpatient stay?",
+          "goto": "check_nonacute"
+        },
+        {
+          "label": "Frailty + advanced illness (member is 66+)?",
+          "goto": "check_age_66_plus"
+        }
+      ]
+    },
+    "check_esrd_dx": {
+      "type": "check",
+      "check_id": "CHK-ESRD-DX",
+      "on": {
+        "MET": "conclude_excluded_esrd_dx",
+        "NOT_MET": "check_esrd_px",
+        "OPEN_CONDITION": "check_esrd_px"
+      }
+    },
+    "check_esrd_px": {
+      "type": "check",
+      "check_id": "CHK-ESRD-PX",
+      "on": {
+        "MET": "conclude_excluded_esrd_px",
+        "NOT_MET": "check_pregnancy",
+        "OPEN_CONDITION": "check_pregnancy"
+      }
+    },
+    "check_pregnancy": {
+      "type": "check",
+      "check_id": "CHK-PREGNANCY-DX",
+      "on": {
+        "MET": "conclude_excluded_pregnancy",
+        "NOT_MET": "check_hospice",
+        "OPEN_CONDITION": "check_hospice"
+      }
+    },
+    "check_hospice": {
+      "type": "check",
+      "check_id": "CHK-HOSPICE",
+      "on": {
+        "MET": "conclude_excluded_hospice",
+        "NOT_MET": "check_nonacute",
+        "OPEN_CONDITION": "check_nonacute"
+      }
+    },
+    "check_nonacute": {
+      "type": "check",
+      "check_id": "CHK-NONACUTE-POS",
+      "on": {
+        "MET": "conclude_excluded_nonacute",
+        "NOT_MET": "check_age_66_plus",
+        "OPEN_CONDITION": "check_age_66_plus"
+      }
+    },
+    "check_age_66_plus": {
+      "type": "check",
+      "check_id": "CHK-AGE-66-PLUS",
+      "context": "Confirming the age precondition for the combined frailty plus advanced illness exclusion",
+      "on": {
+        "MET": "check_frailty",
+        "NOT_MET": "conclude_no_exclusions_found",
+        "OPEN_CONDITION": "check_frailty"
+      }
+    },
+    "check_frailty": {
+      "type": "check",
+      "check_id": "CHK-FRAILTY-DX",
+      "on": {
+        "MET": "check_advanced_illness",
+        "NOT_MET": "conclude_no_exclusions_found",
+        "OPEN_CONDITION": "check_advanced_illness"
+      }
+    },
+    "check_advanced_illness": {
+      "type": "check",
+      "check_id": "CHK-ADVANCED-ILLNESS-DX",
+      "on": {
+        "MET": "conclude_excluded_frailty_advanced_illness",
+        "NOT_MET": "conclude_no_exclusions_found",
+        "OPEN_CONDITION": "conclude_no_exclusions_found"
+      }
+    },
+    "check_reading_date_valid": {
+      "type": "check",
+      "check_id": "CHK-READING-DATE-VALID",
+      "on": {
+        "MET": "check_reading_setting",
+        "NOT_MET": "conclude_reading_not_usable_timing",
+        "OPEN_CONDITION": "check_reading_setting"
+      }
+    },
+    "check_reading_setting": {
+      "type": "check",
+      "check_id": "CHK-READING-SETTING",
+      "note": "THE \"I don't know where the reading was taken\" SCENARIO. OPEN_CONDITION does not end the tree here -- it proceeds to the modifier and BP-threshold checks with the reading provisionally included, and the setting question is carried forward as a flagged open condition into whichever conclusion leaf is reached.\n",
+      "on": {
+        "MET": "check_reading_modifier",
+        "NOT_MET": "conclude_reading_excluded_setting",
+        "OPEN_CONDITION": "check_reading_modifier"
+      }
+    },
+    "check_reading_modifier": {
+      "type": "check",
+      "check_id": "CHK-READING-MODIFIER",
+      "on": {
+        "MET": "check_bp_controlled",
+        "NOT_MET": "conclude_reading_excluded_modifier",
+        "OPEN_CONDITION": "check_bp_controlled"
+      }
+    },
+    "check_bp_controlled": {
+      "type": "check",
+      "check_id": "CHK-BP-CONTROLLED",
+      "note": "The one node where OPEN_CONDITION cannot route forward -- there is no partial numeric threshold test. This is the single legitimate \"I can't determine this without both numbers\" leaf in the whole tree.\n",
+      "on": {
+        "MET": "conclude_numerator_compliant",
+        "NOT_MET": "conclude_numerator_not_compliant",
+        "OPEN_CONDITION": "conclude_open_numerator_math"
+      }
+    }
+  },
+  "conclusions": {
+    "conclude_in_denominator": {
+      "result": "IN_DENOMINATOR",
+      "cites": [
+        "HTN-DX-1",
+        "HTN-DX-2"
+      ],
+      "explanation": "Two qualifying hypertension diagnoses were confirmed, correctly timed -- member enters the denominator (pending exclusion checks)."
+    },
+    "conclude_dx_not_qualifying": {
+      "result": "NOT_IN_DENOMINATOR",
+      "cites": [
+        "SYN.CBP.VS.001"
+      ],
+      "explanation": "This diagnosis code is not in the Essential Hypertension value set, so it cannot count toward entry criteria."
+    },
+    "conclude_first_dx_too_late": {
+      "result": "NOT_IN_DENOMINATOR",
+      "cites": [
+        "HTN-DX-1"
+      ],
+      "explanation": "This diagnosis is a valid hypertension code, but its date is after June 30 -- it cannot serve as the FIRST qualifying event."
+    },
+    "conclude_only_one_qualifying_dx": {
+      "result": "NOT_IN_DENOMINATOR",
+      "cites": [
+        "HTN-DX-2"
+      ],
+      "explanation": "Only one qualifying hypertension diagnosis was confirmed. A second, distinct qualifying diagnosis on/before December 31 is required."
+    },
+    "conclude_second_dx_too_late": {
+      "result": "NOT_IN_DENOMINATOR",
+      "cites": [
+        "HTN-DX-2"
+      ],
+      "explanation": "The second diagnosis falls after December 31 of the measurement year and cannot count."
+    },
+    "conclude_open_entry_criteria": {
+      "result": "OPEN",
+      "carries_open_conditions": true,
+      "explanation": "Entry criteria cannot be fully confirmed or ruled out with the facts given -- see flagged open condition(s)."
+    },
+    "conclude_excluded_esrd_dx": {
+      "result": "EXCLUDED",
+      "exclusion_reason": "EXCL-ESRD-DX",
+      "cites": [
+        "SYN.CBP.VS.004"
+      ],
+      "explanation": "This diagnosis is an ESRD code -> the member is excluded from the denominator."
+    },
+    "conclude_excluded_esrd_px": {
+      "result": "EXCLUDED",
+      "exclusion_reason": "EXCL-ESRD-PX",
+      "cites": [
+        "SYN.CBP.VS.005"
+      ],
+      "explanation": "This procedure indicates ESRD (dialysis/transplant/nephrectomy) -> the member is excluded."
+    },
+    "conclude_excluded_pregnancy": {
+      "result": "EXCLUDED",
+      "exclusion_reason": "EXCL-PREGNANCY",
+      "cites": [
+        "SYN.CBP.VS.006"
+      ],
+      "explanation": "Pregnancy diagnosis present during the measurement year -> the member is excluded."
+    },
+    "conclude_excluded_hospice": {
+      "result": "EXCLUDED",
+      "exclusion_reason": "EXCL-HOSPICE",
+      "cites": [
+        "SYN.CBP.VS.007"
+      ],
+      "explanation": "Hospice indicator present -> the member is excluded."
+    },
+    "conclude_excluded_nonacute": {
+      "result": "EXCLUDED",
+      "exclusion_reason": "EXCL-NONACUTE-INPT",
+      "cites": [
+        "SYN.CBP.VS.014"
+      ],
+      "explanation": "Non-acute inpatient stay present during the measurement year -> the member is excluded."
+    },
+    "conclude_excluded_frailty_advanced_illness": {
+      "result": "EXCLUDED",
+      "exclusion_reason": "EXCL-FRAILTY-ADVANCED-ILLNESS",
+      "cites": [
+        "SYN.CBP.VS.008",
+        "SYN.CBP.VS.009"
+      ],
+      "explanation": "Both frailty and advanced illness indicators are present (member 66+) -> the member is excluded. This exclusion requires BOTH -- either alone does not trigger it."
+    },
+    "conclude_no_exclusions_found": {
+      "result": "NO_EXCLUSION_FOUND",
+      "carries_open_conditions": true,
+      "explanation": "None of the checked exclusion criteria were met based on the facts given. This does not guarantee no exclusion exists -- only that the ones checked here don't apply."
+    },
+    "conclude_open_exclusion": {
+      "result": "OPEN",
+      "carries_open_conditions": true,
+      "explanation": "This exclusion cannot be confirmed or ruled out with the facts given -- see flagged open condition(s). Other exclusions and the numerator can still be evaluated independently."
+    },
+    "conclude_reading_not_usable_timing": {
+      "result": "READING_NOT_USABLE",
+      "cites": [
+        "numerator selection_rule"
+      ],
+      "explanation": "This reading predates the second qualifying hypertension diagnosis and cannot serve as the representative reading."
+    },
+    "conclude_reading_excluded_setting": {
+      "result": "READING_NOT_USABLE",
+      "exclusion_reason": "numerator excluded_sources (inpatient/ED)",
+      "cites": [
+        "SYN.CBP.VS.015"
+      ],
+      "explanation": "This reading was taken during an acute inpatient stay or ED visit and cannot be used for the numerator."
+    },
+    "conclude_reading_excluded_modifier": {
+      "result": "READING_NOT_USABLE",
+      "exclusion_reason": "numerator excluded_sources (CPT II modifier)",
+      "cites": [
+        "SYN.CBP.VS.013"
+      ],
+      "explanation": "This reading carries a CPT Category II exception modifier (1P/2P/8P) and cannot be used for the numerator."
+    },
+    "conclude_numerator_compliant": {
+      "result": "NUMERATOR_COMPLIANT",
+      "carries_open_conditions": true,
+      "cites": [
+        "CBP-RATE-1"
+      ],
+      "explanation": "Systolic < 140 AND diastolic < 90 on the representative reading -> numerator compliant."
+    },
+    "conclude_numerator_not_compliant": {
+      "result": "NUMERATOR_NOT_COMPLIANT",
+      "carries_open_conditions": true,
+      "cites": [
+        "CBP-RATE-1"
+      ],
+      "explanation": "The representative reading does not meet the <140/<90 threshold -> not numerator compliant."
+    },
+    "conclude_open_numerator_math": {
+      "result": "OPEN",
+      "carries_open_conditions": true,
+      "explanation": "Systolic and/or diastolic values were not provided -- a numeric compliance answer isn't possible without both. Everything else evaluated along this path still stands."
+    }
+  }
+}

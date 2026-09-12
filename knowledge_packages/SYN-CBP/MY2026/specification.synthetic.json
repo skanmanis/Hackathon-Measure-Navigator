@@ -1,0 +1,13 @@
+{
+  "document_type": "SPECIFICATION",
+  "measure_id": "SYN-CBP",
+  "measurement_year": 2026,
+  "synthetic": true,
+  "sections": [
+    {
+      "section_id": "SYN-CBP-NUM-MULTIPLE-READINGS",
+      "title": "Multiple blood pressure readings on the same date",
+      "text": "When multiple blood pressure readings occur on the same date, use the lowest systolic value and the lowest diastolic value from that date to determine the representative result. The selected systolic and diastolic values do not need to come from the same reading. For this synthetic CBP package, controlled blood pressure requires systolic below 140 and diastolic below 90."
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"schema_version":"1.0","measure_id":"SYN-CDC","measurement_year":2026,"display_name":"Comprehensive Diabetes Care","package_status":"AWAITING_ARTIFACTS","required_artifacts":["specification.pdf","mld.json","vsd.xlsx","decision_tree.yaml","decision_tree.generated.json","check_catalog.json","stored_procedures"]}

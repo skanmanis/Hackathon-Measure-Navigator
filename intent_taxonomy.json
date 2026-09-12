@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "confidence_threshold": 0.62,
+  "intents": [
+    {"id": "DENOMINATOR_ENTRY", "route": "check_htn_dx_1", "terms": ["denominator", "eligible", "entry", "diagnosis", "qualifying"]},
+    {"id": "EXCLUSION", "route": "check_esrd_dx", "terms": ["exclude", "exclusion", "hospice", "pregnancy", "esrd", "frailty", "advanced illness"]},
+    {"id": "NUMERATOR_READING", "route": "check_reading_date_valid", "terms": ["reading", "blood pressure", "bp", "numerator", "inpatient", "emergency", "modifier", "compliant"]},
+    {"id": "IMPLEMENTATION_CONFLICT", "route": "ESCALATE", "terms": ["sql differs", "specification differs", "mismatch", "conflict", "bug", "stored procedure"]},
+    {"id": "FAQ_GENERAL", "route": "FAQ", "terms": ["faq", "quick reference", "download", "general question"]}
+  ]
+}
