@@ -54,7 +54,7 @@ def download_faqs():
     rows = service.store.list_faqs()
     output = io.StringIO()
     if request.args.get("format", "csv") == "md":
-        output.write("# Measure Navigator Hackathon FAQs\n\n")
+        output.write("# Measure Navigator FAQs\n\n")
         for row in rows:
             output.write(f"## {row.get('question', '')}\n\n{row.get('answer', '')}\n\nSources: {row.get('source_refs', '')}\n\n")
         return Response(output.getvalue(), mimetype="text/markdown", headers={"Content-Disposition": "attachment; filename=measure-navigator-faq.md"})
@@ -84,6 +84,13 @@ def respond(session_id: str):
         return jsonify({"error": str(exc)}), 400
 
 
+@app.post("/api/sessions/<session_id>/action")
+def session_action(session_id: str):
+    try:
+        return jsonify(service.action(session_id, (request.get_json(silent=True) or {}).get("action", "")))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=int(os.getenv("PORT", "5002")), debug=False)
-

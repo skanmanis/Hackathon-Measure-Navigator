@@ -25,8 +25,8 @@
       <section class="workspace" aria-label="Measure clarification workspace">
         <div class="path"><div class="active"><b>1</b><span>Ask</span></div><i></i><div><b>2</b><span>Retrieve</span></div><i></i><div><b>3</b><span>Clarify</span></div><i></i><div><b>4</b><span>Answer</span></div><button id="trace-button" class="trace-button" type="button" title="View sources, facts, open conditions, and source authority" disabled>View answer trace</button></div>
         <div class="quick" aria-label="Example questions"><button data-prompt="When two CBP readings are taken on the same day, which values are used?">Multiple readings</button><button data-prompt="Why might a member be excluded from this measure?">Exclusions</button><button data-prompt="Explain how the stored procedure implements the numerator logic.">Explain SQL logic</button></div>
-        <div id="messages" class="messages" aria-live="polite"><article class="message assistant"><span class="avatar">MN</span><div><small>Navigator</small><p>Welcome. Ask a MY2026 measure question. I’ll retrieve the relevant specification and implementation evidence, then ask one follow-up only when a material fact is missing.</p></div></article></div>
-        <form id="ask-form" class="composer"><label for="question">Ask a HEDIS question</label><div><textarea id="question" rows="2" maxlength="4000" placeholder="Example: When two readings occur on the same date, which values are used?" required></textarea><button id="submit-button" type="submit">Ask</button></div><small>The explanation uses retrieved documents and supplied facts. It does not execute a stored procedure or query member data.</small></form>
+        <div id="messages" class="messages" aria-live="polite"><article class="message assistant"><span class="avatar">MN</span><div><small>Navigator</small><p>Welcome. Ask a MY2026 measure question. I’ll use the available measure guidance and ask focused follow-up questions when details are missing.</p></div></article></div>
+        <form id="ask-form" class="composer"><label for="question">Ask a HEDIS question</label><div><textarea id="question" rows="2" maxlength="4000" placeholder="Example: When two readings occur on the same date, which values are used?" required></textarea><button id="submit-button" type="submit">Ask</button></div><small>Use non-identifying measure and claim details only.</small></form>
       </section>
       <div class="side-rail" id="side-rail" hidden><aside class="faq-panel" aria-labelledby="source-panel-title">
         <div class="panel-head"><div><span class="eyebrow">RETRIEVED EVIDENCE</span><h2 id="source-panel-title">Relevant sources</h2></div><span id="source-count" class="count">0</span></div>
@@ -41,4 +41,3 @@
   <script src="{{ url_for('static',filename='app.js',v='1') }}" defer></script>
 </body>
 </html>
-

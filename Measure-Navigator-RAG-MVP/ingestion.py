@@ -213,7 +213,7 @@ class IngestionService:
             text = f"Question: {row.get('question', '')}\nAnswer: {row.get('answer', '')}"
             chunks.append(Chunk(
                 chunk_id=f"faq-{index}", text=text, measure_id=raw_measure, measurement_year=2026,
-                source_type="faq", source_name="Hackathon FAQ", locator=row.get("source_refs", "FAQ"),
+                source_type="faq", source_name="Measure FAQ", locator=row.get("source_refs", "FAQ"),
                 authority=AUTHORITIES["faq"], title=row.get("question", "")
             ))
         return chunks

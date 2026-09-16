@@ -29,7 +29,7 @@ knowledge/MY2026/EED/
 knowledge/MY2026/SPC/
 ```
 
-The repository includes one clearly labelled synthetic CBP demonstration document so the UI can be exercised before office documents are added. Remove or replace it before the office-source validation run.
+The repository includes a small CBP sample document so the UI can be exercised before office documents are added. Replace it with the office-approved MY2026 specification before formal validation.
 
 ## Setup
 

@@ -55,7 +55,8 @@ class SessionState:
     intent_confidence: float = 0.0
     facts: dict[str, Any] = field(default_factory=dict)
     asked_facts: list[str] = field(default_factory=list)
+    pending_fact: str | None = None
     turns: list[dict[str, str]] = field(default_factory=list)
     evidence_ids: list[str] = field(default_factory=list)
+    feedback: list[str] = field(default_factory=list)
     status: str = "ACTIVE"
-

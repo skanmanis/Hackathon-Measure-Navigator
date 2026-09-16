@@ -6,7 +6,7 @@ from dataclasses import asdict
 from typing import Any
 
 from config import Settings
-from controller import FACT_QUESTIONS, classify_intent, fallback_facts, next_missing_fact
+from controller import FACT_QUESTIONS, classify_intent, fallback_facts, next_missing_fact, normalize_fact_response
 from ingestion import IngestionService
 from llm import LLMAdapter
 from models import Evidence, SessionState
@@ -61,17 +61,48 @@ class NavigatorService:
             raise ValueError("Enter a response.")
         masked, phi_masked = self._mask(response)
         session.turns.append({"role": "user", "content": masked})
-        pending = session.asked_facts[-1] if session.asked_facts else None
+        pending = session.pending_fact
         if pending:
-            extracted = fallback_facts(masked)
-            session.facts[pending] = extracted.get(pending, masked)
+            valid, value, extracted = normalize_fact_response(pending, masked)
             session.facts.update(extracted)
+            if not valid:
+                clarification = f"I understood that as additional context, but I still need this detail: {FACT_QUESTIONS[pending]} You can also choose “I don’t know.”"
+                return self._response(session, "FOLLOW_UP", clarification, [], [], phi_masked, masked, pending)
+            session.facts[pending] = value
+            if pending == "pos_code" and value != "UNKNOWN":
+                setting_by_pos = {"11": "outpatient", "12": "home", "21": "inpatient", "22": "outpatient", "23": "emergency department"}
+                if str(value) in setting_by_pos:
+                    session.facts["care_setting"] = setting_by_pos[str(value)]
+            session.pending_fact = None
+        else:
+            follow_up_facts = fallback_facts(masked)
+            session.facts.update(follow_up_facts)
+            session.facts["_deep_dive"] = True
+            session.intent = "compliance" if any(term in masked.lower() for term in ("why", "still", "not compliant", "noncompliant", "dropped")) else session.intent
+            session.original_question = f"{session.original_question}\nFollow-up: {masked}"
         return self._advance(session, phi_masked=phi_masked, masked_question=masked)
+
+    def action(self, session_id: str, action: str) -> dict:
+        session = self._session(session_id)
+        if action == "solved":
+            session.feedback.append("SOLVED")
+            session.status = "RESOLVED"
+            return self._response(session, "RESOLVED", "Glad that resolved the question. I recorded the outcome for this session.", [], [], False, "")
+        if action in {"useful_deeper", "continue_reasoning", "not_solved"}:
+            session.feedback.append(action.upper())
+            session.facts["_deep_dive"] = True
+            session.intent = "compliance" if session.facts.get("reading_values") else session.intent
+            session.status = "ACTIVE"
+            return self._advance(session, phi_masked=False, masked_question="")
+        raise ValueError("Unsupported session action.")
 
     def _advance(self, session: SessionState, phi_masked: bool, masked_question: str) -> dict:
         query = self._retrieval_query(session)
         evidence = self.store.search(query, session.measure_id, session.measurement_year, self.settings.top_k)
         eligible = [item for item in evidence if item.score >= self.settings.document_threshold]
+        if not eligible:
+            evidence = self.store.search(session.original_question.split("\nFollow-up:", 1)[0], session.measure_id, session.measurement_year, self.settings.top_k)
+            eligible = [item for item in evidence if item.score >= self.settings.document_threshold]
         faq_threshold = 0.52 if self.llm.mode == "local-fallback" else self.settings.faq_threshold
         faq_matches = [item for item in eligible if item.source_type == "faq" and item.score >= faq_threshold]
         documents = [item for item in eligible if item.source_type != "faq"]
@@ -79,7 +110,9 @@ class NavigatorService:
 
         missing = next_missing_fact(session.intent, session.facts, session.asked_facts, bool(documents or faq_matches))
         if missing:
-            session.asked_facts.append(missing)
+            if missing not in session.asked_facts:
+                session.asked_facts.append(missing)
+            session.pending_fact = missing
             fallback = FACT_QUESTIONS[missing]
             follow_up = self.llm.text(
                 "Phrase exactly one concise follow-up question for the specified missing fact. Do not ask for names, IDs, dates of birth, addresses, or any new fact.",
@@ -120,13 +153,14 @@ class NavigatorService:
         elif primary.text.startswith("English explanation:"):
             lead = primary.text.split("Original T-SQL:", 1)[0].replace("English explanation:", "").strip()[:900]
         else:
-            sentences = [part.strip(" #\n") for part in re.split(r"(?<=[.!?])\s+|\n+", primary.text) if len(part.strip()) > 20]
+            sentences = [part.strip(" #\n") for part in re.split(r"(?<=[.!?])\s+|\n+", primary.text) if len(part.strip()) > 20 and not any(term in part.lower() for term in ("hackathon", "synthetic", "replace by", "demonstration document"))]
             terms = set(re.findall(r"[a-z0-9]+", session.original_question.lower())) - {"when", "which", "what", "does", "from", "with", "this", "that", "member", "cbp"}
             ranked = sorted(sentences, key=lambda sentence: len(terms & set(re.findall(r"[a-z0-9]+", sentence.lower()))), reverse=True)
             lead = " ".join(ranked[:3])[:900]
 
         readings = session.facts.get("reading_values") or []
         setting = str(session.facts.get("care_setting", "")).lower()
+        unknowns = [key for key, value in session.facts.items() if value == "UNKNOWN"]
         source_text = " ".join(item.text.lower() for item in evidence)
         if readings and "lowest systolic" in source_text and "lowest diastolic" in source_text:
             pairs = [(int(value.split("/")[0]), int(value.split("/")[1])) for value in readings if re.fullmatch(r"\d{2,3}/\d{2,3}", value)]
@@ -134,6 +168,9 @@ class NavigatorService:
                 systolic, diastolic = min(value[0] for value in pairs), min(value[1] for value in pairs)
                 if setting in {"inpatient", "emergency", "emergency department", "ed"} and "not accepted" in source_text:
                     lead = f"No. The supplied {setting} setting is not accepted as numerator evidence in the retrieved rule, so these readings should not be used for this scenario."
+                elif unknowns:
+                    labels = ", ".join(key.replace("_", " ") for key in unknowns)
+                    lead = f"The supplied values produce a lowest systolic of {systolic} and lowest diastolic of {diastolic}, but I cannot determine full numerator compliance yet because these details remain unknown: {labels}."
                 elif "below 140" in source_text and "below 90" in source_text:
                     controlled = systolic < 140 and diastolic < 90
                     lead = (
@@ -143,7 +180,6 @@ class NavigatorService:
         answer = f"{lead} [1]"
         if conflict:
             answer += f"\n\nPotential implementation difference: {conflict}"
-        answer += "\n\nThis explanation is based on retrieved documents and supplied facts; no member database or stored procedure was executed."
         return answer
 
     @staticmethod
@@ -162,6 +198,16 @@ class NavigatorService:
         phi_masked: bool, masked_question: str, missing: str | None = None, conflict: str | None = None
     ) -> dict:
         trace_sources = sorted(documents or faqs, key=lambda item: (item.authority, -item.score))[:6]
+        actions = []
+        if status == "FOLLOW_UP":
+            actions = [{"id": "unknown", "label": "I don’t know"}]
+        elif status == "ANSWERED":
+            actions = [
+                {"id": "solved", "label": "This solved it"},
+                {"id": "useful_deeper", "label": "Useful — dig deeper"},
+                {"id": "continue_reasoning", "label": "Continue investigation"},
+                {"id": "not_solved", "label": "This didn’t solve it"},
+            ]
         return {
             "session_id": session.session_id,
             "status": status,
@@ -176,6 +222,7 @@ class NavigatorService:
             "phi_masked": phi_masked,
             "masked_question": masked_question,
             "privacy_notice": "Possible identifiers were masked. Do not enter further PHI." if phi_masked else "",
+            "actions": actions,
             "trace": {
                 "intent": session.intent,
                 "facts_used": {key: value for key, value in session.facts.items() if not key.startswith("_")},
