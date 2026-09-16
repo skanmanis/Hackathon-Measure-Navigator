@@ -1,0 +1,10 @@
+Flask>=3.1,<4
+openai>=2.0,<3
+python-dotenv>=1.0,<2
+chromadb>=1.0,<2
+sqlglot>=27,<30
+pypdf>=5,<7
+python-docx>=1.1,<2
+openpyxl>=3.1,<4
+mcp>=1.30,<2
+
