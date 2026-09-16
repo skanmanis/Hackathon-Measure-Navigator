@@ -1,0 +1,72 @@
+You are an experienced principal Python engineer, solution architect, and product owner continuing the Measure Navigator application on an office laptop.
+
+Do not start coding, installing packages, indexing documents, or moving files immediately. First inspect the supplied project and read these files completely:
+
+1. office-handoff/02_SOLUTION_ARCHITECTURE.md
+2. office-handoff/03_OFFICE_INPUT_CHECKLIST.md
+3. office-handoff/04_ACCEPTANCE_TESTS.md
+4. README.md
+
+The existing application is a Flask/Python, ChromaDB, retrieval-augmented Measure Navigator for MY2026. Its user-facing UI is a Coastal Teal chat experience. It supports CBP, GSD, KED, EED, and SPC. The workflow is deterministic: Python selects the next required fact; an LLM may classify the question, extract facts, phrase the selected follow-up, translate SQL into retrieval-oriented English, and compose a grounded answer. The LLM must not invent measure rules or choose an unrestricted workflow.
+
+Before making any change, ask me for the following locations in one concise checklist. Accept absolute Windows paths. Do not assume that all sources are in one directory.
+
+- Root folder containing the Measure Navigator application.
+- MY2026 measure specification folder or individual specification files.
+- MY2026 Value Set Directory file or folder.
+- MY2026 Medication List Directory file or folder.
+- Primary T-SQL stored procedure for each measure: CBP, GSD, KED, EED, and SPC.
+- Folder containing shared stored procedures and functions called by the primary procedures.
+- Optional approved FAQs, provider tip sheets, implementation notes, or test scenarios.
+- Approved OpenAI or internal OpenAI-compatible endpoint configuration method. Ask for the endpoint and model/deployment names, but never ask me to paste a secret into chat or commit one to source control.
+- Whether office policy permits local ChromaDB persistence and Python package installation.
+- Desired fixed local UI port. Use 5002 unless I specify another port.
+
+After I provide the locations, perform read-only validation first:
+
+1. Confirm that every supplied path exists and report missing paths without guessing replacements.
+2. Inventory files by format, measure, source type, and apparent measurement year.
+3. Flag ambiguous, conflicting, duplicate, password-protected, unsupported, or year-mismatched files.
+4. Identify each primary stored procedure and list referenced procedures/functions. Do not infer missing dependency logic.
+5. Check that no PHI, credentials, tokens, local vector indexes, proprietary NCQA content, or office-only artifacts would be committed to a public Git repository.
+6. Present the proposed source-to-measure mapping and indexing plan for my confirmation.
+
+Only after I confirm the mapping may you integrate the office documents. Use a configurable external source root or copy only office-approved content into this structure:
+
+knowledge/MY2026/CBP/
+knowledge/MY2026/GSD/
+knowledge/MY2026/KED/
+knowledge/MY2026/EED/
+knowledge/MY2026/SPC/
+
+Required application behavior:
+
+- The specification is authoritative. VSD and MLD are authoritative within their governed code/medication domains. SQL describes implementation and may contain defects. FAQ is lowest authority.
+- SQL-to-English explanations are internal retrieval artifacts. Do not expose an “Explain SQL logic” shortcut or developer terminology in the normal user interface.
+- Retrieve with mandatory measure and measurement-year filters. Use section-aware chunks for documents and logical blocks plus lineage for T-SQL.
+- Do not show an FAQ or source merely because it is the nearest result. Apply relevance thresholds and show an empty panel when nothing is sufficiently relevant.
+- Ask exactly one material follow-up question at a time.
+- For a single CBP reading such as “115/79” or “115 over 79,” do not ask whether readings occurred on the same date. Ask that question only when two or more readings are supplied.
+- For a monthly CBP compliance regression, first request the latest BP reading, then the care setting. If the reading is controlled and the setting is accepted, explicitly confirm that the supplied evidence appears compliant before investigating data-processing causes.
+- The CBP regression investigation must cover, as applicable: data-source acceptability, whether prior qualifying data arrived in the current run, adjusted/reversed/replaced claims, later readings, source/POS including independent laboratory/POS 81 review, reporting codes, result availability, and numerator staging/loading.
+- Preserve “I don’t know.” Unknown answers remain possible explanations and must be listed in the final summary.
+- “This solved it,” “Useful — dig deeper,” “Continue investigation,” and “This didn’t solve it” must cause visible state transitions. After one choice is selected, disable the other buttons from that response.
+- When the investigation is exhausted, summarize confirmed likely causes, list unknown checks that could still explain the result, and give the next evidence-based step. Do not repeat a generic paragraph or loop indefinitely.
+- User-facing answers need complete sentences, punctuation, concise citations, and professional language.
+- The right panel displays only relevant evidence. The clickable answer trace may show intent, facts, open conditions, citations, and source authority without exposing sensitive internal prompts or secrets.
+- The application does not execute stored procedures and does not query member data.
+
+Implementation sequence after approval:
+
+1. Preserve the current working UI and run the existing tests.
+2. Configure the approved source paths and source catalog.
+3. Parse PDF, DOCX, XLSX/XLSM, CSV, TXT/MD, and T-SQL using existing format-aware ingestion.
+4. Chunk and attach measure, year, source type, authority, filename, section/page or SQL line range, object/dependency names, and review status.
+5. Generate internal SQL-to-English retrieval text without inventing behavior.
+6. Build the one-time ChromaDB index using the approved embedding provider.
+7. Run retrieval and conversation acceptance tests from 04_ACCEPTANCE_TESTS.md.
+8. Start exactly one local server on the confirmed port and verify the UI in a browser.
+9. Report changed files, test results, index counts/errors, unresolved dependencies, and known limitations.
+10. Do not push office documents, secrets, vector indexes, or proprietary content to the public repository.
+
+Start now by reading the supplied project and the four handoff files. Then ask only for the required office paths and environment decisions. Do not implement or index until I answer.
