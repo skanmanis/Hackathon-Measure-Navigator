@@ -30,6 +30,26 @@ def test_single_reading_sets_single_reading_context():
     assert facts["reading_dates"] == "single reading"
 
 
+def test_single_reading_written_with_over_is_normalized():
+    valid, value, extracted = normalize_fact_response("reading_values", "115 over 79")
+    assert valid
+    assert value == ["115/79"]
+    assert extracted["reading_dates"] == "single reading"
+
+
+def test_deep_dive_starts_with_data_source():
+    facts = {
+        "_scenario_mode": True, "_deep_dive": True, "reading_values": ["115/79"],
+        "reading_dates": "single reading", "care_setting": "outpatient",
+    }
+    assert next_missing_fact("compliance", facts, [], True) == "reading_source"
+
+
+def test_non_compliance_wording_routes_to_compliance():
+    intent, _ = classify_intent("The member changed from compliance to non compliance")
+    assert intent == "compliance"
+
+
 def test_unknown_setting_routes_to_pos_code():
     facts = {"_scenario_mode": True, "reading_values": ["115/79"], "reading_dates": "single reading", "care_setting": "UNKNOWN"}
     assert next_missing_fact("reading_selection", facts, [], True) == "pos_code"

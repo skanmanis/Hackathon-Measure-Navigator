@@ -5,14 +5,13 @@ from typing import Any
 
 
 INTENT_RULES = [
-    ("sql_implementation", ("stored procedure", "sql", "code", "query", "cte", "implementation")),
     ("exclusion", ("exclude", "excluded", "exclusion", "hospice", "death")),
     ("eligibility", ("eligible", "eligibility", "enrollment", "denominator", "age")),
     ("reading_selection", ("reading", "blood pressure", "lowest", "same day", "bp")),
     ("value_set", ("value set", "code", "oid", "hcpcs", "cpt", "icd")),
     ("medication", ("medication", "drug", "ndc", "rxnorm", "statin")),
     ("data_source", ("claim", "inpatient", "outpatient", "data source", "permitted", "allowed")),
-    ("compliance", ("compliant", "non compliant", "noncompliant", "numerator", "met")),
+    ("compliance", ("compliance", "compliant", "non compliant", "noncompliant", "numerator", "met")),
 ]
 
 
@@ -23,17 +22,24 @@ REQUIRED_FACTS: dict[str, list[str]] = {
     "exclusion": ["scenario_facts"],
 }
 
-DEEP_DIVE_FACTS = ["pos_code", "claim_code", "reading_source", "modifier", "numerator_loaded"]
+DEEP_DIVE_FACTS = [
+    "reading_source", "prior_data_received", "claim_adjusted", "later_reading_exists",
+    "pos_code", "claim_code", "result_available", "numerator_loaded",
+]
 
 
 FACT_QUESTIONS = {
-    "reading_values": "What readings should I evaluate? You can provide only the clinical values without identifiers.",
-    "reading_dates": "Were the readings taken on the same date or on different dates?",
-    "care_setting": "What was the care setting for the reading—outpatient, inpatient, emergency department, home, or another setting?",
+    "reading_values": "Enter the member’s latest BP reading or readings using clinical values only, without identifiers.",
+    "reading_dates": "Were these readings taken on the same date or on different dates?",
+    "care_setting": "In what care setting was this reading taken—for example, outpatient, inpatient, emergency department, home, or another setting?",
     "pos_code": "Do you know the place-of-service (POS) code associated with the reading?",
     "claim_code": "Do you know the claim, CPT, or CPT II code used to submit the reading?",
-    "reading_source": "Where was the reading documented—for example, a claim, medical record, supplemental file, or another source?",
-    "modifier": "Was a modifier submitted with the blood-pressure code? If so, what was it?",
+    "reading_source": "Where was the reading documented—for example, a claim, medical record, supplemental file, independent laboratory, or another source?",
+    "prior_data_received": "Was the data that supported compliance during the prior months received in the current month’s run?",
+    "claim_adjusted": "Was the previously qualifying claim adjusted, reversed, or replaced before the current run?",
+    "later_reading_exists": "Was another BP reading recorded after the previously compliant reading?",
+    "later_reading_values": "Enter the later BP reading or readings using clinical values only.",
+    "result_available": "Did the data sent to the HEDIS engine include both the BP reporting code and its result value?",
     "numerator_loaded": "Can you confirm whether the qualifying reading reached the numerator input or staging table?",
     "scenario_facts": "What non-identifying facts have you already confirmed for this scenario?",
 }
@@ -53,7 +59,7 @@ def classify_intent(question: str) -> tuple[str, float]:
 def fallback_facts(text: str) -> dict[str, Any]:
     lowered = text.lower()
     facts: dict[str, Any] = {}
-    readings = re.findall(r"\b(\d{2,3})\s*/\s*(\d{2,3})\b", text)
+    readings = re.findall(r"\b(\d{2,3})\s*(?:/|over)\s*(\d{2,3})\b", text, re.I)
     if readings:
         facts["reading_values"] = [f"{a}/{b}" for a, b in readings]
         facts["_scenario_mode"] = True
@@ -82,7 +88,7 @@ def fallback_facts(text: str) -> dict[str, Any]:
 
 def next_missing_fact(intent: str, facts: dict[str, Any], asked: list[str], evidence_available: bool) -> str | None:
     # A directly answerable specification question should not be burdened with scenario questions.
-    if intent in {"specification_clarification", "sql_implementation", "value_set", "medication", "data_source"}:
+    if intent in {"specification_clarification", "value_set", "medication", "data_source"}:
         return None
     if not facts.get("_scenario_mode"):
         return None
@@ -97,6 +103,8 @@ def next_missing_fact(intent: str, facts: dict[str, Any], asked: list[str], evid
         for fact in DEEP_DIVE_FACTS:
             if fact not in facts:
                 return fact
+            if fact == "later_reading_exists" and facts.get(fact) == "YES" and "later_reading_values" not in facts:
+                return "later_reading_values"
     return None
 
 
@@ -115,9 +123,19 @@ def normalize_fact_response(fact: str, text: str) -> tuple[bool, Any, dict[str, 
         return False, None, extracted
     if fact == "pos_code" and re.fullmatch(r"\d{2}", lowered):
         return True, lowered, extracted
-    if fact in {"claim_code", "modifier"} and re.fullmatch(r"[a-z0-9-]{2,12}", lowered):
+    if fact == "claim_code" and re.fullmatch(r"[a-z0-9-]{2,12}", lowered):
         return True, text.strip().upper(), extracted
-    if fact in {"reading_source", "numerator_loaded", "scenario_facts"}:
+    if fact in {"prior_data_received", "claim_adjusted", "later_reading_exists", "result_available", "numerator_loaded"}:
+        if lowered in {"yes", "y", "received", "available", "loaded"}:
+            return True, "YES", extracted
+        if lowered in {"no", "n", "not received", "not available", "not loaded"}:
+            return True, "NO", extracted
+        return False, None, extracted
+    if fact == "later_reading_values":
+        if extracted.get("reading_values"):
+            return True, extracted["reading_values"], extracted
+        return False, None, extracted
+    if fact in {"reading_source", "scenario_facts"}:
         return True, text.strip(), extracted
     if fact == "care_setting":
         return False, None, extracted

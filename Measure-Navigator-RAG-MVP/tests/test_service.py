@@ -34,6 +34,18 @@ def test_single_reading_hides_multiple_readings_evidence():
     assert [item.chunk_id for item in filtered] == ["two"]
 
 
+def test_basic_validation_confirms_controlled_outpatient_evidence():
+    session = SessionState(
+        session_id="test", measure_id="CBP", measurement_year=2026,
+        original_question="Why did compliance change?", intent="compliance",
+        facts={"reading_values": ["115/79"], "reading_dates": "single reading", "care_setting": "outpatient"},
+    )
+    answer = NavigatorService._basic_validation_answer(session)
+    assert "within the control range" in answer
+    assert "accepted care setting" in answer
+    assert "compliant BP evidence" in answer
+
+
 def test_my2026_only(tmp_path):
     custom = Settings(root=tmp_path)
     service = NavigatorService(custom)

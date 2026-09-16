@@ -6,7 +6,7 @@ from dataclasses import asdict
 from typing import Any
 
 from config import Settings
-from controller import FACT_QUESTIONS, classify_intent, fallback_facts, next_missing_fact, normalize_fact_response
+from controller import DEEP_DIVE_FACTS, FACT_QUESTIONS, classify_intent, fallback_facts, next_missing_fact, normalize_fact_response
 from ingestion import IngestionService
 from llm import LLMAdapter
 from models import Evidence, SessionState
@@ -134,10 +134,23 @@ class NavigatorService:
             session.turns.append({"role": "assistant", "content": follow_up})
             return self._response(session, "FOLLOW_UP", follow_up, faq_matches, documents, phi_masked, masked_question, missing)
 
+        if session.facts.get("_deep_dive") and all(fact in session.facts for fact in DEEP_DIVE_FACTS):
+            answer = self._final_investigation_answer(session)
+            session.facts["_investigation_complete"] = True
+            session.status = "ANSWERED"
+            session.turns.append({"role": "assistant", "content": answer})
+            return self._response(session, "ANSWERED", answer, faq_matches, documents, phi_masked, masked_question)
+
         if not documents and not faq_matches:
             message = "I could not find sufficiently relevant MY2026 evidence for this question. Add the applicable source documents to the measure folder and rebuild the index, or refine the question."
             session.status = "INSUFFICIENT_EVIDENCE"
             return self._response(session, session.status, message, [], [], phi_masked, masked_question)
+
+        if session.facts.get("_scenario_mode") and session.facts.get("reading_values") and session.facts.get("care_setting") and not session.facts.get("_deep_dive"):
+            answer = self._basic_validation_answer(session)
+            session.status = "ANSWERED"
+            session.turns.append({"role": "assistant", "content": answer})
+            return self._response(session, "ANSWERED", answer, faq_matches, documents, phi_masked, masked_question)
 
         evidence_for_answer = sorted(documents or faq_matches, key=lambda item: (item.authority, -item.score))[:5]
         conflict = self._detect_conflict(evidence_for_answer)
@@ -217,12 +230,13 @@ class NavigatorService:
         if status == "FOLLOW_UP":
             actions = [{"id": "unknown", "label": "I don’t know"}]
         elif status == "ANSWERED":
-            actions = [
-                {"id": "solved", "label": "This solved it"},
-                {"id": "useful_deeper", "label": "Useful — dig deeper"},
-                {"id": "continue_reasoning", "label": "Continue investigation"},
-                {"id": "not_solved", "label": "This didn’t solve it"},
-            ]
+            actions = [{"id": "solved", "label": "This solved it"}]
+            if not session.facts.get("_investigation_complete"):
+                actions.extend([
+                    {"id": "useful_deeper", "label": "Useful — dig deeper"},
+                    {"id": "continue_reasoning", "label": "Continue investigation"},
+                    {"id": "not_solved", "label": "This didn’t solve it"},
+                ])
         return {
             "session_id": session.session_id,
             "status": status,
@@ -268,6 +282,53 @@ class NavigatorService:
     def _retrieval_query(self, session: SessionState) -> str:
         recent = " ".join(turn["content"] for turn in session.turns[-4:] if turn["role"] == "user")
         return f"{session.intent} {session.original_question} {recent} {session.facts}"
+
+    @staticmethod
+    def _basic_validation_answer(session: SessionState) -> str:
+        readings = session.facts.get("reading_values") or []
+        pairs = [(int(value.split("/")[0]), int(value.split("/")[1])) for value in readings if re.fullmatch(r"\d{2,3}/\d{2,3}", value)]
+        setting = str(session.facts.get("care_setting", "")).lower()
+        if not pairs:
+            return "I recorded the reading and care setting. Continue the investigation to verify whether the evidence reached the current-month numerator."
+        systolic = min(value[0] for value in pairs)
+        diastolic = min(value[1] for value in pairs)
+        controlled = systolic < 140 and diastolic < 90
+        accepted = setting in {"outpatient", "home", "telehealth"}
+        if controlled and accepted:
+            return (
+                f"The supplied BP reading is {systolic}/{diastolic}, which is within the control range, and {setting} is an accepted care setting. "
+                "Based on these facts, the member has compliant BP evidence. If the current run still shows noncompliance, continue the investigation to check the data source, monthly data receipt, claim adjustments, later readings, reporting codes, result availability, and numerator loading."
+            )
+        if not accepted:
+            return f"The supplied BP value is {systolic}/{diastolic}, but the {setting} setting is not accepted for this scenario. The care setting may explain the noncompliant result."
+        return f"The supplied BP reading is {systolic}/{diastolic}, which is not within the control range. This reading may explain the noncompliant result."
+
+    @staticmethod
+    def _final_investigation_answer(session: SessionState) -> str:
+        facts = session.facts
+        labels = {
+            "reading_source": "whether the data source is accepted",
+            "prior_data_received": "whether the prior qualifying data arrived this month",
+            "claim_adjusted": "whether a qualifying claim was adjusted or reversed",
+            "later_reading_exists": "whether a later reading changed the result",
+            "pos_code": "the place-of-service code", "claim_code": "the BP reporting code",
+            "result_available": "whether the result value accompanied the code",
+            "numerator_loaded": "whether the evidence reached numerator staging",
+        }
+        unknowns = [label for key, label in labels.items() if facts.get(key) == "UNKNOWN"]
+        causes = []
+        if facts.get("prior_data_received") == "NO": causes.append("the previously qualifying data was not received in the current run")
+        if facts.get("claim_adjusted") == "YES": causes.append("a previously qualifying claim was adjusted, reversed, or replaced")
+        if facts.get("pos_code") == "81" or "independent lab" in str(facts.get("reading_source", "")).lower(): causes.append("the reading appears associated with an independent laboratory or POS 81 and needs source-acceptability review")
+        if facts.get("result_available") == "NO": causes.append("the reporting code did not include an available result value")
+        if facts.get("numerator_loaded") == "NO": causes.append("the qualifying evidence did not reach numerator staging")
+        later = facts.get("later_reading_values") or []
+        later_pairs = [(int(value.split("/")[0]), int(value.split("/")[1])) for value in later if re.fullmatch(r"\d{2,3}/\d{2,3}", value)]
+        if any(s >= 140 or d >= 90 for s, d in later_pairs): causes.append("a later BP reading is outside the control range and may have changed the result")
+        conclusion = "The remaining likely explanation is: " + "; ".join(causes) + "." if causes else "The facts supplied so far do not identify a confirmed failure point."
+        if unknowns:
+            return "We have completed the available investigation path. " + conclusion + " The items answered as unknown could still explain the noncompliant result: " + "; ".join(unknowns) + ". Check those items and provide the results if you want to continue the review."
+        return "We have completed the available investigation path. " + conclusion + " With the supplied checks completed, the next step is to compare the current run’s source record and processing lineage with the prior compliant run."
 
     @staticmethod
     def _filter_relevant_evidence(session: SessionState, evidence: list[Evidence]) -> list[Evidence]:
