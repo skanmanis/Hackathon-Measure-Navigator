@@ -135,13 +135,23 @@ class IngestionService:
         buffer: list[str] = []
         locator = "Document"
         title = ""
+
+        def flush() -> None:
+            nonlocal buffer
+            if buffer:
+                chunks.append({"text": "\n".join(buffer), "locator": locator, "title": title})
+                buffer = []
+
         for line in lines:
             marker = re.match(r"\[\[(PAGE|SHEET) (.+?)\]\]", line)
             if marker:
+                flush()
                 locator = f"{marker.group(1).title()} {marker.group(2)}"
                 continue
             if re.match(r"^(#{1,4}\s+|\d+(?:\.\d+)*\s+|[A-Z][A-Z\s]{5,})", line) and len(line) < 160:
+                flush()
                 title = line.lstrip("# ")
+                continue
             if not line:
                 continue
             buffer.append(line)
@@ -150,8 +160,7 @@ class IngestionService:
                 chunks.append({"text": joined, "locator": locator, "title": title})
                 tail = joined[-overlap:]
                 buffer = [tail]
-        if buffer:
-            chunks.append({"text": "\n".join(buffer), "locator": locator, "title": title})
+        flush()
         return chunks
 
     def _sql_chunks(self, path: Path, measure: str) -> list[Chunk]:

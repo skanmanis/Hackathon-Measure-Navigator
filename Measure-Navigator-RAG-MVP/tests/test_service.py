@@ -15,6 +15,25 @@ def test_measure_language_is_not_mistaken_for_identifier():
     assert masked == "Is the member compliant?"
 
 
+def test_response_text_ends_with_punctuation():
+    assert NavigatorService._ensure_punctuation("Grounded answer [1]") == "Grounded answer [1]."
+    assert NavigatorService._ensure_punctuation("Already complete.") == "Already complete."
+
+
+def test_single_reading_hides_multiple_readings_evidence():
+    session = SessionState(
+        session_id="test", measure_id="CBP", measurement_year=2026,
+        original_question="Why is the member not compliant?", intent="compliance",
+        facts={"reading_values": ["115/79"]},
+    )
+    evidence = [
+        Evidence("one", "Details", "CBP", 2026, "specification", "spec.md", "Document", 1, 0.9, "Multiple blood pressure readings on the same date"),
+        Evidence("two", "Details", "CBP", 2026, "specification", "spec.md", "Document", 1, 0.8, "Evidence needed"),
+    ]
+    filtered = NavigatorService._filter_relevant_evidence(session, evidence)
+    assert [item.chunk_id for item in filtered] == ["two"]
+
+
 def test_my2026_only(tmp_path):
     custom = Settings(root=tmp_path)
     service = NavigatorService(custom)

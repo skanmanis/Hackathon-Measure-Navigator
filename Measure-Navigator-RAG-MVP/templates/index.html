@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="{{ url_for('static',filename='styles.css',v='3') }}">
   <link rel="stylesheet" href="{{ url_for('static',filename='enhancements.css',v='1') }}">
   <link rel="stylesheet" href="{{ url_for('static',filename='theme-v2.css',v='4') }}">
-  <link rel="stylesheet" href="{{ url_for('static',filename='rag.css',v='1') }}">
+  <link rel="stylesheet" href="{{ url_for('static',filename='rag.css',v='2') }}">
 </head>
 <body>
   <div class="app">
@@ -18,13 +18,12 @@
     </header>
     <div class="caution" role="note"><strong>Please do not enter PHI.</strong> Use only the minimum non-identifying facts needed for clarification.</div>
     <section class="intro">
-      <div><p class="kicker">SPECIFICATIONS · SQL-TO-ENGLISH · RETRIEVAL · GROUNDED ANSWERS</p><h1>Measure clarification with visible evidence</h1></div>
+      <div><p class="kicker">MEASURE GUIDANCE · RETRIEVAL · GROUNDED ANSWERS</p><h1>Measure clarification with visible evidence</h1></div>
       <div class="selectors"><label>Measure<select id="measure-select"></select></label><label>Measurement year<select id="year-select"><option value="2026">MY2026</option></select></label><span id="package-status" class="status-chip">Checking index</span></div>
     </section>
     <main class="product-grid">
       <section class="workspace" aria-label="Measure clarification workspace">
         <div class="path"><div class="active"><b>1</b><span>Ask</span></div><i></i><div><b>2</b><span>Retrieve</span></div><i></i><div><b>3</b><span>Clarify</span></div><i></i><div><b>4</b><span>Answer</span></div><button id="trace-button" class="trace-button" type="button" title="View sources, facts, open conditions, and source authority" disabled>View answer trace</button></div>
-        <div class="quick" aria-label="Example questions"><button data-prompt="When two CBP readings are taken on the same day, which values are used?">Multiple readings</button><button data-prompt="Why might a member be excluded from this measure?">Exclusions</button><button data-prompt="Explain how the stored procedure implements the numerator logic.">Explain SQL logic</button></div>
         <div id="messages" class="messages" aria-live="polite"><article class="message assistant"><span class="avatar">MN</span><div><small>Navigator</small><p>Welcome. Ask a MY2026 measure question. I’ll use the available measure guidance and ask focused follow-up questions when details are missing.</p></div></article></div>
         <form id="ask-form" class="composer"><label for="question">Ask a HEDIS question</label><div><textarea id="question" rows="2" maxlength="4000" placeholder="Example: When two readings occur on the same date, which values are used?" required></textarea><button id="submit-button" type="submit">Ask</button></div><small>Use non-identifying measure and claim details only.</small></form>
       </section>
@@ -36,8 +35,8 @@
       </aside></div>
     </main>
     <dialog id="trace-dialog" class="trace-dialog" aria-labelledby="trace-title"><div class="dialog-head"><div><span class="eyebrow">ANSWER TRACE</span><h2 id="trace-title">How this response was produced</h2></div><button id="trace-close" type="button" aria-label="Close">×</button></div><div id="trace-content" class="trace-content"></div><div class="dialog-foot"><button id="trace-done" type="button">Done</button></div></dialog>
-    <footer><span>MY2026 scoped retrieval</span><span>Deterministic next step</span><span>LLM-grounded explanation</span></footer>
+    <footer><span>MY2026 scoped retrieval</span><span>Guided next step</span><span>Grounded explanation</span></footer>
   </div>
-  <script src="{{ url_for('static',filename='app.js',v='1') }}" defer></script>
+  <script src="{{ url_for('static',filename='app.js',v='2') }}" defer></script>
 </body>
 </html>

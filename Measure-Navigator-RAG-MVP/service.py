@@ -37,13 +37,13 @@ class NavigatorService:
         deterministic_intent, confidence = classify_intent(masked)
         extracted_fallback = fallback_facts(masked)
         understood = self.llm.structured(
-            "Classify a MY2026 measure question and extract only explicitly supplied non-identifying facts. Return JSON with intent, confidence, facts. Allowed intents: specification_clarification, eligibility, exclusion, compliance, reading_selection, value_set, medication, data_source, sql_implementation.",
+            "Classify a MY2026 measure question and extract only explicitly supplied non-identifying facts. Return JSON with intent, confidence, facts. Allowed intents: specification_clarification, eligibility, exclusion, compliance, reading_selection, value_set, medication, data_source.",
             masked,
             {"intent": deterministic_intent, "confidence": confidence, "facts": extracted_fallback},
         )
         intent = understood.get("intent") if understood.get("intent") in {
             "specification_clarification", "eligibility", "exclusion", "compliance", "reading_selection",
-            "value_set", "medication", "data_source", "sql_implementation"
+            "value_set", "medication", "data_source"
         } else deterministic_intent
         facts = extracted_fallback | (understood.get("facts") or {})
         session = SessionState(
@@ -93,16 +93,25 @@ class NavigatorService:
             session.facts["_deep_dive"] = True
             session.intent = "compliance" if session.facts.get("reading_values") else session.intent
             session.status = "ACTIVE"
+            session.facts["_action_intro"] = {
+                "useful_deeper": "That is useful. Let’s check the next condition that could affect the result.",
+                "continue_reasoning": "Let’s continue the investigation with the next unresolved condition.",
+                "not_solved": "Understood. Let’s check another condition that could explain the result.",
+            }[action]
             return self._advance(session, phi_masked=False, masked_question="")
         raise ValueError("Unsupported session action.")
 
     def _advance(self, session: SessionState, phi_masked: bool, masked_question: str) -> dict:
         query = self._retrieval_query(session)
         evidence = self.store.search(query, session.measure_id, session.measurement_year, self.settings.top_k)
-        eligible = [item for item in evidence if item.score >= self.settings.document_threshold]
+        eligible = self._filter_relevant_evidence(
+            session, [item for item in evidence if item.score >= self.settings.document_threshold]
+        )
         if not eligible:
             evidence = self.store.search(session.original_question.split("\nFollow-up:", 1)[0], session.measure_id, session.measurement_year, self.settings.top_k)
-            eligible = [item for item in evidence if item.score >= self.settings.document_threshold]
+            eligible = self._filter_relevant_evidence(
+                session, [item for item in evidence if item.score >= self.settings.document_threshold]
+            )
         faq_threshold = 0.52 if self.llm.mode == "local-fallback" else self.settings.faq_threshold
         faq_matches = [item for item in eligible if item.source_type == "faq" and item.score >= faq_threshold]
         documents = [item for item in eligible if item.source_type != "faq"]
@@ -118,6 +127,10 @@ class NavigatorService:
                 "Phrase exactly one concise follow-up question for the specified missing fact. Do not ask for names, IDs, dates of birth, addresses, or any new fact.",
                 f"Missing fact: {missing}\nKnown facts: {session.facts}\nConversation: {session.turns[-3:]}", fallback
             )
+            intro = session.facts.pop("_action_intro", "")
+            if intro:
+                follow_up = f"{intro} {follow_up}"
+            follow_up = self._ensure_punctuation(follow_up)
             session.turns.append({"role": "assistant", "content": follow_up})
             return self._response(session, "FOLLOW_UP", follow_up, faq_matches, documents, phi_masked, masked_question, missing)
 
@@ -129,6 +142,7 @@ class NavigatorService:
         evidence_for_answer = sorted(documents or faq_matches, key=lambda item: (item.authority, -item.score))[:5]
         conflict = self._detect_conflict(evidence_for_answer)
         answer = self._compose_answer(session, evidence_for_answer, conflict)
+        answer = self._ensure_punctuation(answer)
         session.status = "ANSWERED"
         session.turns.append({"role": "assistant", "content": answer})
         return self._response(session, "ANSWERED", answer, faq_matches, documents, phi_masked, masked_question, conflict=conflict)
@@ -197,7 +211,8 @@ class NavigatorService:
         self, session: SessionState, status: str, message: str, faqs: list[Evidence], documents: list[Evidence],
         phi_masked: bool, masked_question: str, missing: str | None = None, conflict: str | None = None
     ) -> dict:
-        trace_sources = sorted(documents or faqs, key=lambda item: (item.authority, -item.score))[:6]
+        visible_documents = [item for item in documents if item.source_type not in {"sql", "sql_explanation"}]
+        trace_sources = sorted(visible_documents or faqs, key=lambda item: (item.authority, -item.score))[:6]
         actions = []
         if status == "FOLLOW_UP":
             actions = [{"id": "unknown", "label": "I don’t know"}]
@@ -227,7 +242,7 @@ class NavigatorService:
                 "intent": session.intent,
                 "facts_used": {key: value for key, value in session.facts.items() if not key.startswith("_")},
                 "open_condition": missing,
-                "source_priority": "Specification > VSD/MLD > T-SQL > SQL-English > FAQ",
+                "source_priority": "Measure specification > supporting reference material > FAQ",
                 "conflict": conflict,
                 "llm_mode": self.llm.mode,
                 "retrieval_backend": self.store.backend,
@@ -243,9 +258,27 @@ class NavigatorService:
             "locator": item.locator, "score": round(item.score, 3), "citation": item.citation,
         }
 
+    @staticmethod
+    def _ensure_punctuation(text: str) -> str:
+        cleaned = text.strip()
+        if cleaned and cleaned[-1] not in ".!?":
+            cleaned += "."
+        return cleaned
+
     def _retrieval_query(self, session: SessionState) -> str:
         recent = " ".join(turn["content"] for turn in session.turns[-4:] if turn["role"] == "user")
         return f"{session.intent} {session.original_question} {recent} {session.facts}"
+
+    @staticmethod
+    def _filter_relevant_evidence(session: SessionState, evidence: list[Evidence]) -> list[Evidence]:
+        readings = session.facts.get("reading_values") or []
+        asks_about_multiple = any(
+            phrase in session.original_question.lower()
+            for phrase in ("multiple reading", "two reading", "same day", "same date", "lowest")
+        )
+        if len(readings) <= 1 and not asks_about_multiple:
+            return [item for item in evidence if "multiple blood pressure readings" not in item.title.lower()]
+        return evidence
 
     def _validate_scope(self, measure_id: str, year: int) -> None:
         if measure_id not in self.settings.measures:
