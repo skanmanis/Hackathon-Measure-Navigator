@@ -29,6 +29,8 @@ class NavigatorService:
         ]
 
     def start(self, question: str, measure_id: str, measurement_year: int) -> dict:
+        self.llm.last_call_used_model = False
+        self.llm.last_error = None
         question = question.strip()
         if not question:
             raise ValueError("Enter a question.")
@@ -41,20 +43,31 @@ class NavigatorService:
             masked,
             {"intent": deterministic_intent, "confidence": confidence, "facts": extracted_fallback},
         )
+        if not isinstance(understood, dict):
+            understood = {"intent": deterministic_intent, "confidence": confidence, "facts": {}}
         intent = understood.get("intent") if understood.get("intent") in {
             "specification_clarification", "eligibility", "exclusion", "compliance", "reading_selection",
             "value_set", "medication", "data_source"
         } else deterministic_intent
-        facts = extracted_fallback | (understood.get("facts") or {})
+        model_facts = understood.get("facts")
+        if not isinstance(model_facts, dict):
+            model_facts = {}
+        facts = extracted_fallback | model_facts
+        try:
+            intent_confidence = float(understood.get("confidence", confidence))
+        except (TypeError, ValueError):
+            intent_confidence = confidence
         session = SessionState(
             session_id=str(uuid.uuid4()), measure_id=measure_id, measurement_year=measurement_year,
-            original_question=masked, intent=intent, intent_confidence=float(understood.get("confidence", confidence)),
+            original_question=masked, intent=intent, intent_confidence=intent_confidence,
             facts=facts, turns=[{"role": "user", "content": masked}]
         )
         self.sessions[session.session_id] = session
         return self._advance(session, phi_masked=phi_masked, masked_question=masked)
 
     def respond(self, session_id: str, response: str) -> dict:
+        self.llm.last_call_used_model = False
+        self.llm.last_error = None
         session = self._session(session_id)
         response = response.strip()
         if not response:
@@ -83,6 +96,8 @@ class NavigatorService:
         return self._advance(session, phi_masked=phi_masked, masked_question=masked)
 
     def action(self, session_id: str, action: str) -> dict:
+        self.llm.last_call_used_model = False
+        self.llm.last_error = None
         session = self._session(session_id)
         if action == "solved":
             session.feedback.append("SOLVED")
@@ -124,8 +139,8 @@ class NavigatorService:
             session.pending_fact = missing
             fallback = FACT_QUESTIONS[missing]
             follow_up = self.llm.text(
-                "Phrase exactly one concise follow-up question for the specified missing fact. Do not ask for names, IDs, dates of birth, addresses, or any new fact.",
-                f"Missing fact: {missing}\nKnown facts: {session.facts}\nConversation: {session.turns[-3:]}", fallback
+                "Conservatively phrase exactly one concise follow-up for the controller-selected fact. Preserve the approved question's scope. Do not request prior values, add another fact, or ask for names, IDs, dates of birth, or addresses.",
+                f"Missing fact: {missing}\nApproved question: {fallback}\nKnown facts: {session.facts}\nConversation: {session.turns[-3:]}", fallback
             )
             intro = session.facts.pop("_action_intro", "")
             if intro:
@@ -259,6 +274,8 @@ class NavigatorService:
                 "source_priority": "Measure specification > supporting reference material > FAQ",
                 "conflict": conflict,
                 "llm_mode": self.llm.mode,
+                "llm_last_call_used_model": self.llm.last_call_used_model,
+                "llm_error": self.llm.last_error,
                 "retrieval_backend": self.store.backend,
                 "citations": [item.citation for item in trace_sources],
             },

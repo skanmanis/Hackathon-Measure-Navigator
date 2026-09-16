@@ -46,6 +46,19 @@ def test_basic_validation_confirms_controlled_outpatient_evidence():
     assert "compliant BP evidence" in answer
 
 
+def test_model_fact_list_cannot_override_deterministic_facts(tmp_path):
+    service = NavigatorService(Settings(root=tmp_path, use_openai=False))
+    service.llm.structured = lambda *_args, **_kwargs: {
+        "intent": "compliance", "confidence": "not-a-number", "facts": ["unexpected"]
+    }
+    service._advance = lambda session, **_kwargs: {
+        "facts": session.facts, "confidence": session.intent_confidence
+    }
+    result = service.start("Member has a BP of 115 over 79", "CBP", 2026)
+    assert result["facts"]["reading_values"] == ["115/79"]
+    assert isinstance(result["confidence"], float)
+
+
 def test_my2026_only(tmp_path):
     custom = Settings(root=tmp_path)
     service = NavigatorService(custom)

@@ -1,0 +1,84 @@
+You are restoring the complete Measure Navigator application from an attachment-safe source package on an office laptop.
+
+The package is intentionally stored as plain text. Every application file beneath `SAFE_SOURCE_FILES` has an additional final `.txt` extension so email and attachment security systems do not treat Python, PowerShell, JavaScript, HTML, CSS, SQL, or configuration examples as executable attachments.
+
+Do not redesign or recreate the application. Restore the supplied implementation exactly before proposing improvements.
+
+First actions:
+
+1. Read all files in `OFFICE_HANDOFF_DOCS`, beginning with `01_START_HERE_PROMPT.txt` and `02_SOLUTION_ARCHITECTURE.md`.
+2. Inventory `SAFE_SOURCE_FILES` recursively.
+3. Create a new working folder named `Measure-Navigator-RAG-MVP` outside the attachment package.
+4. Reproduce the directory tree from `SAFE_SOURCE_FILES`.
+5. For every file, remove only the final safety suffix `.txt` from its filename. Examples:
+   - `app.py.txt` becomes `app.py`
+   - `static/styles.css.txt` becomes `static/styles.css`
+   - `templates/index.html.txt` becomes `templates/index.html`
+   - `requirements.txt.txt` becomes `requirements.txt`
+   - `knowledge/README.md.txt` becomes `knowledge/README.md`
+6. Do not rename a file by guessing. Use `FILE_MANIFEST.txt` as the authoritative source-to-restored-path map.
+7. Compare restored file counts with `FILE_MANIFEST.txt` and report any missing or duplicate file before continuing.
+
+Safety and scope:
+
+- Do not execute anything directly from the attachment package.
+- Do not copy credentials, `.env` files, virtual environments, caches, ChromaDB data, Git metadata, or proprietary office documents from unrelated locations.
+- Do not publish office specifications, VSD/MLD content, stored procedures, credentials, or generated indexes to a public repository.
+- Ask before installing dependencies if office policy is unknown.
+- Never ask me to paste an API key into chat or commit one into a file.
+
+After exact restoration, run read-only inspection and ask me in one concise checklist for:
+
+- restored project root;
+- MY2026 specification locations;
+- VSD location;
+- MLD location;
+- primary T-SQL stored procedure for CBP, GSD, KED, EED, and SPC;
+- shared stored procedure/function folder;
+- optional approved FAQs and supporting documents;
+- approved OpenAI or internal OpenAI-compatible endpoint and model/deployment names;
+- whether Python package installation and local ChromaDB persistence are permitted;
+- confirmed UI port, defaulting to 5002.
+
+Do not index or modify the application until I confirm the proposed source mapping.
+
+The restored UI must preserve the supplied implementation and styling:
+
+- Coastal Teal design system;
+- consistent typography, spacing, buttons, panels, and responsive layout;
+- Navigator and FAQ Library pages;
+- central conversation workspace;
+- measure and measurement-year selectors;
+- relevant-evidence right panel that stays hidden when empty;
+- clickable answer trace;
+- feedback controls with single-use button groups;
+- no visible “Explain SQL logic” shortcut;
+- professional, punctuated responses;
+- fixed local URL, normally `http://127.0.0.1:5002/`.
+
+The restored logic must preserve:
+
+- deterministic Python workflow control;
+- LLM-bounded intent/fact extraction, question phrasing, SQL-to-English derivation, and grounded answer composition;
+- section-aware document chunking;
+- internal logical-block SQL processing with lineage;
+- ChromaDB retrieval with measure/year filters;
+- source authority: specification first, VSD/MLD within their domains, SQL implementation evidence, SQL-English derivative, then FAQ;
+- single-reading normalization for `115/79` and `115 over 79`;
+- same-date questions only for two or more readings;
+- the CBP monthly-regression investigation described in the architecture;
+- “I don’t know” handling and final unknown-condition summary;
+- no stored-procedure execution and no member-database access.
+
+Once I approve the source mapping:
+
+1. Preserve a clean baseline and run the supplied tests.
+2. Configure or copy only approved office sources.
+3. Perform one-time indexing.
+4. Report indexed files, chunks, errors, unresolved SQL dependencies, retrieval backend, and LLM mode.
+5. Run the acceptance tests in `OFFICE_HANDOFF_DOCS/04_ACCEPTANCE_TESTS.md`.
+6. Start exactly one server on the confirmed port.
+7. Verify the actual UI in a browser.
+8. Report all changes and remaining limitations.
+
+Begin by reading the handoff documents, validating the manifest, and restoring the exact source tree. Then stop and ask for the office source locations and environment decisions.

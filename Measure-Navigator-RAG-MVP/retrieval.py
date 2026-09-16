@@ -13,19 +13,22 @@ from models import Chunk, Evidence
 
 
 class KnowledgeStore:
+    COLLECTION_NAME = "measure_navigator_my2026"
+
     def __init__(self, settings: Settings, llm: LLMAdapter):
         self.settings = settings
         self.llm = llm
         self._fallback_path = settings.root / "data" / "catalog.json"
         self._fallback: list[dict] = []
+        self._client = None
         self.collection = None
         try:
             import chromadb
 
             settings.chroma_path.mkdir(parents=True, exist_ok=True)
-            client = chromadb.PersistentClient(path=str(settings.chroma_path))
-            self.collection = client.get_or_create_collection(
-                "measure_navigator_my2026", metadata={"hnsw:space": "cosine"}
+            self._client = chromadb.PersistentClient(path=str(settings.chroma_path))
+            self.collection = self._client.get_or_create_collection(
+                self.COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
             )
         except Exception:
             self.collection = None
@@ -40,10 +43,14 @@ class KnowledgeStore:
             self._fallback = json.loads(self._fallback_path.read_text(encoding="utf-8"))
 
     def clear(self) -> None:
-        if self.collection is not None:
-            existing = self.collection.get(include=[])
-            if existing.get("ids"):
-                self.collection.delete(ids=existing["ids"])
+        if self.collection is not None and self._client is not None:
+            # Chroma fixes a collection's vector dimension on its first insert.
+            # Recreate it so switching from local hash vectors to provider
+            # embeddings (or changing embedding models) is safe.
+            self._client.delete_collection(self.COLLECTION_NAME)
+            self.collection = self._client.get_or_create_collection(
+                self.COLLECTION_NAME, metadata={"hnsw:space": "cosine"}
+            )
         self._fallback = []
         if self._fallback_path.exists():
             self._fallback_path.unlink()
@@ -115,4 +122,3 @@ class KnowledgeStore:
             aliases = {measure_id, f"SYN-{measure_id}"}
             rows = [row for row in rows if row.get("measure_id") in aliases]
         return rows
-

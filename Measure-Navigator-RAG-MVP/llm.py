@@ -16,6 +16,8 @@ class LLMAdapter:
     def __init__(self, settings: Settings):
         self.settings = settings
         self.client = None
+        self.last_error: str | None = None
+        self.last_call_used_model = False
         if settings.use_openai and os.getenv("OPENAI_API_KEY"):
             try:
                 from openai import OpenAI
@@ -54,12 +56,15 @@ class LLMAdapter:
         try:
             response = self.client.chat.completions.create(
                 model=self.settings.chat_model,
-                temperature=0,
                 response_format={"type": "json_object"},
                 messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
             )
+            self.last_call_used_model = True
+            self.last_error = None
             return json.loads(response.choices[0].message.content or "{}")
-        except Exception:
+        except Exception as exc:
+            self.last_call_used_model = False
+            self.last_error = f"{type(exc).__name__}: {exc}"
             return fallback
 
     def text(self, system: str, user: str, fallback: str) -> str:
@@ -68,10 +73,12 @@ class LLMAdapter:
         try:
             response = self.client.chat.completions.create(
                 model=self.settings.chat_model,
-                temperature=0.1,
                 messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
             )
+            self.last_call_used_model = True
+            self.last_error = None
             return (response.choices[0].message.content or fallback).strip()
-        except Exception:
+        except Exception as exc:
+            self.last_call_used_model = False
+            self.last_error = f"{type(exc).__name__}: {exc}"
             return fallback
-
